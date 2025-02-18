@@ -137,7 +137,7 @@ def autoActivePlansThread(session, token):
                 continue
             
             # 如果启动新计划了，等待一个小时候后再注册新计划
-            if current_time - lastGetPlansTime >= timedelta(hours=6)
+            if current_time - lastGetPlansTime >= timedelta(hours=6):
                 lastGetPlansTime = datetime.now() - timedelta(hours=5)
                 
             logging.info("启动新 Plans 成功！ PlanId: " + str(fristPlanId))
