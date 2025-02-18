@@ -126,6 +126,8 @@ def autoActivePlansThread(session, token):
 
         logging.info("已经激活流量：「" + str((rateRoam / 100) * 3) + " G」,未激活流量：「" + str((inRate / 100) * 3) + " G」,剩余计划数：「" + str(balanceCount) + "」")
 
+
+        current_time = datetime.now() 
         # 判断是否流量不够了
         if rateRoam <= 30 and balanceCount != 0:
             res, resultStartPlan = startPlans(session, token, fristPlanId)
@@ -135,12 +137,13 @@ def autoActivePlansThread(session, token):
                 continue
             
             # 如果启动新计划了，等待一个小时候后再注册新计划
-            lastGetPlansTime = datetime.now() - timedelta(hours=5)
+            if current_time - lastGetPlansTime >= timedelta(hours=6)
+                lastGetPlansTime = datetime.now() - timedelta(hours=5)
+                
             logging.info("启动新 Plans 成功！ PlanId: " + str(fristPlanId))
             continue
 
         # 自动补充计划
-        current_time = datetime.now() 
         if balanceCount < 2 and dayGet < 4 and current_time - lastGetPlansTime >= timedelta(hours=6):
             result = eligibilityAddToAccount(session, token)
             if result == 1:
