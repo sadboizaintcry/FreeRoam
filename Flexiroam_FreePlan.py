@@ -95,7 +95,7 @@ def autoActivePlansThread(session, token):
     dayGet = 0
     timeSec = 0
 
-    # 一般默认第一个就补充
+    # 保守起见
     lastGetPlansTime = datetime.now() - timedelta(hours=7)
     while True:
 
@@ -111,9 +111,12 @@ def autoActivePlansThread(session, token):
         # 获取当前计划
         res, resultPlans = getPlans(session)
 
-        if not res:
+        if not res and "获取计划失败，没有寻找到计划信息" not in resultPlans:
             logging.error("获取 Plans 失败！ 原因: " + resultPlans)
             continue
+        
+        if not res:
+            resultPlans = { "plans": [] }
 
         activePlans = selectOutPlans(resultPlans)
         balanceCount, inRate, fristPlanId = getInactivePlan(resultPlans)
@@ -131,6 +134,8 @@ def autoActivePlansThread(session, token):
                 logging.error("启动新 Plans 失败！ 原因: " + resultStartPlan)
                 continue
             
+            # 如果启动新计划了，等待一个小时候后再注册新计划
+            lastGetPlansTime = datetime.now() - timedelta(hours=5)
             logging.info("启动新 Plans 成功！ PlanId: " + str(fristPlanId))
             continue
 
@@ -162,10 +167,14 @@ def eligibilityAddToAccount(session, token):
     
     if not res:
         if resultEligibilityPlan == "We are currently processing your previous redemption, kindly retry again later":
-            
             logging.warning("确认卡号资格失败！ 原因: 正在等待新计划下发，重置等待时间2小时 cardinfo: " + cardNumber)
             return 1
-
+        
+        # 直接停止运行
+        if "账号被封" in resultEligibilityPlan or "卡号不符合规则" in resultEligibilityPlan:
+            logging.warning("确认卡号资格失败！ 原因: "+ resultEligibilityPlan + " cardinfo: " + cardNumber)
+            exit(-1)
+        
         logging.error("确认卡号资格失败！ 原因: " + resultEligibilityPlan + " cardinfo: " + cardNumber)
         return 2
     
@@ -189,7 +198,7 @@ def updateSessionThread(session):
             exit(1)
 
         logging.info("更新 Session 成功！")
-        time.sleep(43200)
+        time.sleep(3600)
 
 # 信用卡计算工具
 ############################################
@@ -223,7 +232,13 @@ def login(session, user, pwd):
         "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
     },json={
         "email": user,
-        "password": pwd
+        "password": pwd,
+        "device_udid": "iPhone17,2",
+        "device_model": "iPhone17,2",
+        "device_platform": "ios",
+        "device_version": "18.3.1",
+        "have_esim_supported_device": 1,
+        "notification_token": "undefined"
     })
 
     resultJson = result.json()
@@ -276,21 +291,25 @@ def getCsrf(session):
     return True, resultJson["csrfToken"]
 
 def getPlans(session):
-    result = session.get(url="https://www.flexiroam.com/en-us/my-plans", headers={
-        "referer": "https://www.flexiroam.com/en-us/home",
-        "rsc": "1",
-        "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
-    })
-    
-    # 获取只有计划的那个 Json 数据
-    for line in result.text.splitlines():
-        if '{"plans":[' in line:
-            splits = line.split('{"plans":[')
-            resultRaw = '{"plans":[' + splits[1][:len(splits[1]) - 1]
-            
-            return True, json.loads(resultRaw)
-    
-    return False, "获取计划失败，没有寻找到计划信息！"
+    try:
+        result = session.get(url="https://www.flexiroam.com/en-us/my-plans", headers={
+            "referer": "https://www.flexiroam.com/en-us/home",
+            "rsc": "1",
+            "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
+        })
+        
+        # 获取只有计划的那个 Json 数据
+        for line in result.text.splitlines():
+            if '{"plans":[' in line:
+                splits = line.split('{"plans":[')
+                resultRaw = '{"plans":[' + splits[1][:len(splits[1]) - 1]
+                
+                return True, json.loads(resultRaw)
+        
+        return False, "获取计划失败，没有寻找到计划信息，可能是没手动注册第一个，操作后等一会就好。"
+    except:
+        time.sleep(1)
+        return getPlans(session)
 
 def startPlans(session, token, sim_plan_id):
     result = session.post(url="https://prod-planservices.flexiroam.com/api/plan/start", headers={
@@ -317,7 +336,13 @@ def eligibilityPlan(session, token, lookup_value):
         "lookup_value": lookup_value
     })
 
-    resultJson = result.json()
+    resultJson = result.json()   
+    if "Authorization Failed" in resultJson["message"]:
+        return False, "账号被封，停止运行。"
+    
+    if "Your Mastercard is not eligible for the offer" in resultJson["message"]:
+        return False, "卡号不符合规则。"
+        
     if "3GB Global Data Plan" not in resultJson["message"]:
         return False, resultJson["message"]
     
