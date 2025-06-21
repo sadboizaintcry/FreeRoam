@@ -11,18 +11,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 # Cập nhật phiên bản mới nhất
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5 # Cập nhật phiên bản mới nhất
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.x' # Hoặc chỉ định cụ thể, ví dụ '3.11'
+          python-version: '3.x'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        continue-on-error: true # Tiếp tục nếu không có requirements.txt
+          pip install -r requirements.txt
+        continue-on-error: false # Đảm bảo dừng nếu cài đặt thất bại
 
       - name: Run Flexiroam script
         run: python Flexiroam_FreePlan.py
