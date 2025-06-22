@@ -1,9 +1,9 @@
-name: Run Flexiroam Script Every 12 Hours
+name: 🚀 Flexiroam automation service v1.0
 
 on:
   schedule:
-    - cron: '0 */12 * * *' # Chạy mỗi 12 giờ (0:00 và 12:00 UTC)
-  workflow_dispatch: # Cho phép chạy thủ công
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
 
 jobs:
   run-script:
@@ -22,9 +22,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-        continue-on-error: false # Đảm bảo dừng nếu cài đặt thất bại
+        continue-on-error: false
 
-      - name: Run Flexiroam script
+      - name: 🚀 Initializing Flexiroam automation service v1.0
         run: python Flexiroam_FreePlan.py
         env:
           USERNAME: ${{ secrets.USERNAME }}
