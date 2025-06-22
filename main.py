@@ -43,7 +43,7 @@ def main():
         logging.error("❌ Session establishment failed: %s", resultCredentials)
         exit(1)
 
-    logging.info("✅ Authentication successful - Service ready")
+    logging.info("📅 Authentication successful - Service ready")
 
     # Start session update thread
     threading.Thread(target=updateSessionThread, daemon=True, kwargs={ "session": session }).start()
