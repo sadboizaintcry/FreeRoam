@@ -7,56 +7,58 @@ import threading
 import os
 from datetime import datetime, timedelta
 
-USERNAME = os.environ.get('USERNAME', '')
+USERNAME = os.environ.get('USERNAME', ''
 PASSWORD = os.environ.get('PASSWORD', '')
 CARDBIN = "528911"
 JWT_Default = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRfaWQiOjQsImZpcnN0X25hbWUiOiJUcmF2ZWwiLCJsYXN0X25hbWUiOiJBcHAiLCJlbWFpbCI6InRyYXZlbGFwcEBmbGV4aXJvYW0uY29tIiwidHlwZSI6IkNsaWVudCIsImFjY2Vzc190eXBlIjoiQXBwIiwidXNlcl9hY2NvdW50X2lkIjo2LCJ1c2VyX3JvbGUiOiJWaWV3ZXIiLCJwZXJtaXNzaW9uIjpbXSwiZXhwaXJlIjoxODc5NjcwMjYwfQ.-RtM_zNG-zBsD_S2oOEyy4uSbqR7wReAI92gp9uh-0Y"
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    logging.info("正在启动 Flexiroam 自动注册 MasterCard 免费 3G Plan 脚本程序......")
+    logging.info("🔄 Initializing Flexiroam automation service v1.0")
 
     session = requests.session()
 
-    logging.info("正在登录获取 token ......")
+    logging.info("🔐 Authenticating user credentials...")
     
     res, resultLogin = login(session, USERNAME, PASSWORD)
     if not res:
-        logging.error("登录获取 token 失败！ 原因: " + resultLogin)
+        logging.error("❌ Authentication failed: %s", resultLogin)
         exit(1)
-
-    logging.info("正在获取 csrf ......")
-    res, csrf = getCsrf(session)
     token = resultLogin["token"]
+    logging.info("🔑 Retrieved authToken -> %s", token)
+    logging.info("🔐 Retrieving CSRF token...")
+    res, csrf = getCsrf(session)
+
 
     if not res:
-        logging.error("获取 csrf 失败！ 原因: " + csrf)
+        logging.error("❌ CSRF token retrieval failed: %s", csrf)
         exit(1)
+    logging.info("🔑 Retrieved CSRF -> %s", csrf)
+    logging.info("🛡️ Establishing secure session...")
 
-    logging.info("正在认证获取 __Secure-authjs.session-token ......")
-
-    # 获取认证 Cookie
+    # Get authentication Cookie
     res, resultCredentials = credentials(session, csrf, token)
 
     if not res:
-        logging.error("获取 __Secure-authjs.session-token 失败！ 原因: " + resultCredentials)
+        logging.error("❌ Session establishment failed: %s", resultCredentials)
         exit(1)
 
-    logging.info("登录成功！正在初始化计划信息，并启用 session 更新......")
+    logging.info("✅ Authentication successful - Service ready")
 
-    # 启动 session 更新线程
+    # Start session update thread
     threading.Thread(target=updateSessionThread, daemon=True, kwargs={ "session": session }).start()
 
-    # 启动 计划管理线程
+    # Start plan management thread
     threading.Thread(target=autoActivePlansThread, daemon=True, kwargs={ "session": session, "token": token }).start()
 
-    # 梗塞进程
+    # Block process
     while True:
         time.sleep(1000)
 
-# 计划管理线程
+# Plan management thread
 def autoActivePlansThread(session, token):
     def selectOutPlans(plans):
+        logging.info("🔍 Looking for plans information...")
         newPlans = []
 
         for plan in plans["plans"]:
@@ -92,28 +94,28 @@ def autoActivePlansThread(session, token):
         
         return allCount, allRate, planId
     
-    # 默认时间
+    # Default time
     dayGet = 0
     timeSec = 0
 
-    # 保守起见
+    # Conservative approach
     lastGetPlansTime = datetime.now() - timedelta(hours=7)
     while True:
 
-        # 默认120秒
+        # Default 120 seconds
         time.sleep(120)
 
-        # 一天最大获取计划上限重置
+        # Daily maximum plan acquisition limit reset
         timeSec += 120
         if timeSec > 86400:
             dayGet = 0
             timeSec = 0
 
-        # 获取当前计划
+        # Get current plans
         res, resultPlans = getPlans(session)
 
-        if not res and "获取计划失败，没有寻找到计划信息" not in resultPlans:
-            logging.error("获取 Plans 失败！ 原因: " + resultPlans)
+        if not res and "Failed to get plans, no plan information found" not in resultPlans:
+            logging.error("❌ Plan retrieval failed: %s", resultPlans)
             continue
         
         if not res:
@@ -122,111 +124,109 @@ def autoActivePlansThread(session, token):
         activePlans = selectOutPlans(resultPlans)
         balanceCount, inRate, fristPlanId = getInactivePlan(resultPlans)
 
-        # 获取目前剩余流量
+        # Get current remaining data
         rateRoam = getActivePercentage(activePlans)
 
-        logging.info("已经激活流量：「" + str((rateRoam / 100) * 3) + " G」,未激活流量：「" + str((inRate / 100) * 3) + " G」,剩余计划数：「" + str(balanceCount) + "」")
-
+        logging.info("👤 Plan Status: Active %.2f GB | Inactive %.2f GB | Available %d plans", 
+                    (rateRoam / 100) * 3, (inRate / 100) * 3, balanceCount)
 
         current_time = datetime.now() 
-        # 判断是否流量不够了
+        # Check if data is insufficient
         if rateRoam <= 30 and balanceCount != 0:
             res, resultStartPlan = startPlans(session, token, fristPlanId)
             
             if not res:
-                logging.error("启动新 Plans 失败！ 原因: " + resultStartPlan)
+                logging.error("❌ Plan activation failed: %s", resultStartPlan)
                 continue
             
-            # 如果启动新计划了，等待一个小时候后再注册新计划
+            # If new plan started, wait an hour before registering new plan
             if current_time - lastGetPlansTime >= timedelta(hours=6):
                 lastGetPlansTime = datetime.now() - timedelta(hours=5)
                 
-            logging.info("启动新 Plans 成功！ PlanId: " + str(fristPlanId))
+            logging.info("✅ Plan activated successfully [ID: %s]", str(fristPlanId))
             continue
 
-        # 自动补充计划
+        # Auto replenish plans
         if balanceCount < 2 and dayGet < 4 and current_time - lastGetPlansTime >= timedelta(hours=6):
             result = eligibilityAddToAccount(session, token)
             if result == 1:
-                # 重置时间
+                # Reset time
                 lastGetPlansTime = datetime.now()
 
             if result != 0:
                 continue
         
-            # 获取 +1
+            # Get +1
             dayGet += 1
 
-            # 重置时间
+            # Reset time
             lastGetPlansTime = datetime.now()
 
-
-
 def eligibilityAddToAccount(session, token):
-    # 生成卡号
+    # Generate card number
     cardNumber = generate_card_number(CARDBIN)
 
-    # 确认卡号是否符合规则
+    # Check if card number meets requirements
     res, resultEligibilityPlan = eligibilityPlan(session, token, cardNumber)
     
     if not res:
         if resultEligibilityPlan == "We are currently processing your previous redemption, kindly retry again later":
-            logging.warning("确认卡号资格失败！ 原因: 正在等待新计划下发，重置等待时间2小时 cardinfo: " + cardNumber)
+            logging.warning("⏳ Rate limit reached - Delaying next attempt (Card: %s)", cardNumber[-4:])
             return 1
         
-        # 直接停止运行
-        if "账号被封" in resultEligibilityPlan or "卡号不符合规则" in resultEligibilityPlan:
-            logging.warning("确认卡号资格失败！ 原因: "+ resultEligibilityPlan + " cardinfo: " + cardNumber)
+        # Stop execution directly
+        if "Account banned" in resultEligibilityPlan or "Card number does not meet requirements" in resultEligibilityPlan:
+            logging.critical("🚫 Service terminated: %s (Card: %s)", resultEligibilityPlan, cardNumber[-4:])
             exit(-1)
         
-        logging.error("确认卡号资格失败！ 原因: " + resultEligibilityPlan + " cardinfo: " + cardNumber)
+        logging.error("❌ Card validation failed: %s (Card: %s)", resultEligibilityPlan, cardNumber[-4:])
         return 2
     
-    # 确认注册计划
+    # Confirm registration plan
     res, resultRedemptionConfirm = redemptionConfirm(session, token, resultEligibilityPlan)
 
     if not res:
-        logging.error("获取新 Plans 失败！ 原因: " + resultRedemptionConfirm + " cardinfo: " + cardNumber)
+        logging.error("❌ Plan redemption failed: %s (Card: %s)", resultRedemptionConfirm, cardNumber[-4:])
         return 2
 
-    logging.info("获取新 Plans 成功！ msg: " + resultRedemptionConfirm + " cardinfo: " + cardNumber)
+    logging.info("🎉 Plan acquired successfully (Card: %s)", cardNumber[-4:])
     return 0
 
-# 自动更新 Session 线程
+# Auto update Session thread
 def updateSessionThread(session):
     while True:
         res, result = updateSession(session)
 
         if not res:
-            logging.error("更新 Session 失败！ 原因: " + result)
+            logging.error("❌ Session refresh failed: %s", result)
             exit(1)
 
-        logging.info("更新 Session 成功！")
+        logging.debug("🔄 Session refreshed successfully")
         time.sleep(3600)
 
-# 信用卡计算工具
+# Credit card calculation tools
 ############################################
 
 def luhn_checksum(card_number):
-    """计算 Luhn 校验和"""
+    """Calculate Luhn checksum"""
     digits = [int(d) for d in card_number]
-    for i in range(len(digits) - 2, -1, -2):  # 从倒数第二位开始，每隔一位翻倍
+    for i in range(len(digits) - 2, -1, -2):  # Starting from second last digit, double every other digit
         digits[i] *= 2
         if digits[i] > 9:
-            digits[i] -= 9  # 如果翻倍后大于 9，则减去 9
-    return sum(digits) % 10  # Luhn 校验值
+            digits[i] -= 9  # If doubled result is greater than 9, subtract 9
+    return sum(digits) % 10  # Luhn check value
 
 def generate_card_number(bin_prefix, length=16):
-    """基于 BIN 生成符合 Luhn 规则的完整卡号"""
+    """Generate complete card number based on BIN that follows Luhn rule"""
     while True:
         card_number = bin_prefix + ''.join(str(random.randint(0, 9)) for _ in range(length - len(bin_prefix) - 1))
-        check_digit = (10 - luhn_checksum(card_number + "0")) % 10  # 计算 Luhn 校验位
+        check_digit = (10 - luhn_checksum(card_number + "0")) % 10  # Calculate Luhn check digit
         full_card_number = card_number + str(check_digit)
         
-        if luhn_checksum(full_card_number) == 0:  # 确保卡号有效
+        if luhn_checksum(full_card_number) == 0:  # Ensure card number is valid
             return full_card_number
 
-# API 列表
+# API List
 ############################################
 
 def login(session, user, pwd):
@@ -302,7 +302,7 @@ def getPlans(session):
             "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
         })
         
-        # 获取只有计划的那个 Json 数据
+        # Get the Json data containing only plans
         for line in result.text.splitlines():
             if '{"plans":[' in line:
                 splits = line.split('{"plans":[')
@@ -310,7 +310,7 @@ def getPlans(session):
                 
                 return True, json.loads(resultRaw)
         
-        return False, "获取计划失败，没有寻找到计划信息，可能是没手动注册第一个，操作后等一会就好。"
+        return False, "Failed to get plans, no plan information found. Maybe the first one wasn't manually registered, try again after operation."
     except:
         time.sleep(1)
         return getPlans(session)
@@ -328,7 +328,7 @@ def startPlans(session, token, sim_plan_id):
     if "data" not in resultJson:
         return False, resultJson["message"]
     
-    return True, "激活计划成功！"
+    return True, "Plan activated successfully!"
 
 def eligibilityPlan(session, token, lookup_value):
     result = session.post(url="https://prod-enduserservices.flexiroam.com/api/user/redemption/check/eligibility", headers={
@@ -342,10 +342,10 @@ def eligibilityPlan(session, token, lookup_value):
 
     resultJson = result.json()   
     if "Authorization Failed" in resultJson["message"]:
-        return False, "账号被封，停止运行。"
+        return False, "Account banned, stopping execution."
     
     if "Your Mastercard is not eligible for the offer" in resultJson["message"]:
-        return False, "卡号不符合规则。"
+        return False, "Card number does not meet requirements."
         
     if "3GB Global Data Plan" not in resultJson["message"]:
         return False, resultJson["message"]
@@ -365,6 +365,6 @@ def redemptionConfirm(session, token, redemption_id):
     if resultJson["message"] != "Redemption confirmed":
         return False, resultJson["message"]
     
-    return True, "获取新计划成功！"
+    return True, "Got new plan successfully!"
 
 main()
