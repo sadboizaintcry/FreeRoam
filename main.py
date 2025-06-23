@@ -8,7 +8,7 @@ import os
 import base64
 from datetime import datetime, timedelta
 
-USERNAME = os.environ.get('USERNAME', '')
+EMAIL = os.environ.get('EMAIL', '')
 PASSWORD = os.environ.get('PASSWORD', '')
 CARDBIN = "528911"
 JWT_Default = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRfaWQiOjQsImZpcnN0X25hbWUiOiJUcmF2ZWwiLCJsYXN0X25hbWUiOiJBcHAiLCJlbWFpbCI6InRyYXZlbGFwcEBmbGV4aXJvYW0uY29tIiwidHlwZSI6IkNsaWVudCIsImFjY2Vzc190eXBlIjoiQXBwIiwidXNlcl9hY2NvdW50X2lkIjo2LCJ1c2VyX3JvbGUiOiJWaWV3ZXIiLCJwZXJtaXNzaW9uIjpbXSwiZXhwaXJlIjoxODc5NjcwMjYwfQ.-RtM_zNG-zBsD_S2oOEyy4uSbqR7wReAI92gp9uh-0Y"
@@ -153,15 +153,15 @@ def handleRegister(session):
         logging.error(f"Execution error: {str(error)}")
         return False, str(error), None, None
 
-def check_account_status(session, username, password):
+def check_account_status(session, email, password):
     """Kiểm tra trạng thái tài khoản hiện tại"""
-    if not username or not password or username == '' or password == '':
+    if not email or not password or email == '' or password == '':
         logging.info("📋 No credentials provided, registration needed")
         return False, "No credentials"
         
     try:
         # Thử đăng nhập với thông tin hiện tại
-        res, result = login(session, username, password)
+        res, result = login(session, email, password)
         if res:
             logging.info("✅ Current credentials are valid")
             return True, "Valid credentials"
@@ -178,7 +178,7 @@ def check_account_status(session, username, password):
         logging.error(f"❌ Error checking account status: {str(e)}")
         return False, f"Error: {str(e)}"
 
-def update_github_secrets(username, password, repo_owner, repo_name, github_token):
+def update_github_secrets(email, password, repo_owner, repo_name, github_token):
     """Cập nhật GitHub repository secrets với thông tin đăng nhập mới"""
     try:
         # Kiểm tra xem PyNaCl có sẵn không
@@ -227,45 +227,45 @@ def update_github_secrets(username, password, repo_owner, repo_name, github_toke
         password_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/actions/secrets/PASSWORD"
         password_response = requests.put(password_url, headers=headers, json=password_data)
         
-        if username_response.status_code in [201, 204] and password_response.status_code in [201, 204]:
+        if email_response.status_code in [201, 204] and password_response.status_code in [201, 204]:
             return True, "GitHub secrets updated successfully"
         else:
-            return False, f"Failed to update secrets: USERNAME({username_response.status_code}), PASSWORD({password_response.status_code})"
+            return False, f"Failed to update secrets: EMAIL({email_response.status_code}), PASSWORD({password_response.status_code})"
             
     except Exception as e:
         return False, f"Error updating GitHub secrets: {str(e)}"
 
 def auto_register_if_needed(session, github_token=None, repo_owner=None, repo_name=None):
     """Tự động đăng ký tài khoản mới nếu thông tin hiện tại không hợp lệ"""
-    global USERNAME, PASSWORD
+    global EMAIL, PASSWORD
     
     # Kiểm tra trạng thái tài khoản hiện tại
-    is_valid, status = check_account_status(session, USERNAME, PASSWORD)
+    is_valid, status = check_account_status(session, EMAIL, PASSWORD)
     
     if is_valid:
         logging.info("🎯 Current account is valid, no registration needed")
-        return True, USERNAME, PASSWORD
+        return True, EMAIL, PASSWORD
         
     logging.info(f"🔄 Current account status: {status}, starting registration...")
     
     # Đăng ký tài khoản mới
-    success, message, new_username, new_password = handleRegister(session)
+    success, message, new_email, new_password = handleRegister(session)
     
     if not success:
         logging.error(f"❌ Auto registration failed: {message}")
         return False, None, None
         
     # Cập nhật biến global
-    USERNAME = new_username
+    EMAIL = new_email
     PASSWORD = new_password
     
-    logging.info(f"✅ New account registered successfully: {new_username}")
+    logging.info(f"✅ New account registered successfully: {new_email}")
     
     # Cập nhật GitHub secrets nếu có thông tin
     if github_token and repo_owner and repo_name:
         logging.info("🔄 Updating GitHub repository secrets...")
         success, github_result = update_github_secrets(
-            new_username, new_password, repo_owner, repo_name, github_token
+            new_email, new_password, repo_owner, repo_name, github_token
         )
         if success:
             logging.info("✅ GitHub secrets updated successfully")
@@ -274,7 +274,7 @@ def auto_register_if_needed(session, github_token=None, repo_owner=None, repo_na
     else:
         logging.info("ℹ️ GitHub credentials not provided, skipping secrets update")
         
-    return True, new_username, new_password
+    return True, new_email, new_password
 
 def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
@@ -289,7 +289,7 @@ def main():
     
     # Tự động đăng ký nếu cần
     logging.info("🔍 Checking account credentials...")
-    success, username, password = auto_register_if_needed(
+    success, email, password = auto_register_if_needed(
         session, 
         github_token if github_token else None,
         repo_owner if repo_owner else None, 
@@ -301,11 +301,11 @@ def main():
         exit(1)
     
     # Cập nhật biến global
-    USERNAME = username
+    EMAIL = email
     PASSWORD = password
     
     logging.info("🔐 Authenticating user credentials...")
-    res, resultLogin = login(session, USERNAME, PASSWORD)
+    res, resultLogin = login(session, EMAIL, PASSWORD)
     if not res:
         logging.error("❌ Authentication failed: %s", resultLogin)
         exit(1)
@@ -596,7 +596,7 @@ def eligibilityPlan(session, token, lookup_value):
         "content-type": "application/json",
         "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
     }, json={
-        "email": USERNAME,
+        "email": EMAIL,
         "lookup_value": lookup_value
     })
 
