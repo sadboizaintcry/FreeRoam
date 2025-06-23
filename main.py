@@ -27,6 +27,7 @@ def generateRandomUserData():
     firstName = firstNames[random.randint(0, len(firstNames) - 1)]
     lastName = lastNames[random.randint(0, len(lastNames) - 1)]
     countryCode = countryCodes[random.randint(0, len(countryCodes) - 1)]
+    email = `${firstName.toLowerCase()}${lastName.toLowerCase()}.${randomNum}@simpace.edu.vn`
     iPhoneInfo = iPhoneModels[random.randint(0, len(iPhoneModels) - 1)].split('-')
     iosVersion = iosVersions[random.randint(0, len(iosVersions) - 1)]
     
@@ -34,7 +35,7 @@ def generateRandomUserData():
         "first_name": firstName,
         "last_name": lastName,
         "home_country_code": countryCode,
-        "email": "nikksje@nik.edu.pl",  # Email cố định từ JavaScript gốc
+        "email": email,
         "password": "@Sadb0iz",
         "language_preference": "en-us",
         "device_udid": iPhoneInfo[0],
