@@ -24,17 +24,17 @@ def generateRandomUserData():
     
     # Sử dụng chính xác logic từ JavaScript gốc
     randomNum = random.randint(100, 999) + int(str(int(time.time()))[-3:])
-    firstName = firstNames[random.randint(0, len(firstNames) - 1)]
-    lastName = lastNames[random.randint(0, len(lastNames) - 1)]
-    countryCode = countryCodes[random.randint(0, len(countryCodes) - 1)]
-    email = f"{first_name.lower()}{last_name.lower()}.{random_num}@simpace.edu.vn"
+    first_name = firstNames[random.randint(0, len(firstNames) - 1)]
+    last_name = lastNames[random.randint(0, len(lastNames) - 1)]
+    home_country_code = countryCodes[random.randint(0, len(countryCodes) - 1)]
+    email = f"{first_name.lower()}{last_name.lower()}.{randomNum}@simpace.edu.vn"
     iPhoneInfo = iPhoneModels[random.randint(0, len(iPhoneModels) - 1)].split('-')
     iosVersion = iosVersions[random.randint(0, len(iosVersions) - 1)]
     
     return {
-        "first_name": firstName,
-        "last_name": lastName,
-        "home_country_code": countryCode,
+        "first_name": first_name,
+        "last_name": last_name,
+        "home_country_code": home_country_code,
         "email": email,
         "password": "@Sadb0iz",
         "language_preference": "en-us",
