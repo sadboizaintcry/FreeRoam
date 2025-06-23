@@ -29,3 +29,6 @@ jobs:
         env:
           USERNAME: ${{ secrets.USERNAME }}
           PASSWORD: ${{ secrets.PASSWORD }}
+          REPO_OWNER: ${{ secrets.REPO_OWNER }}
+          REPO_NAME: ${{ secrets.REPO_NAME }}
+          GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
