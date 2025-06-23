@@ -8,12 +8,11 @@ import os
 import base64
 from datetime import datetime, timedelta
 
-EMAIL = os.environ.get('EMAIL', '')
-PASSWORD = os.environ.get('PASSWORD', '')
+ENV_USR_EMAIL = os.environ.get('ENV_USR_EMAIL', '')
+ENV_USR_PASS = os.environ.get('ENV_USR_PASS', '')
 CARDBIN = "528911"
 JWT_Default = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRfaWQiOjQsImZpcnN0X25hbWUiOiJUcmF2ZWwiLCJsYXN0X25hbWUiOiJBcHAiLCJlbWFpbCI6InRyYXZlbGFwcEBmbGV4aXJvYW0uY29tIiwidHlwZSI6IkNsaWVudCIsImFjY2Vzc190eXBlIjoiQXBwIiwidXNlcl9hY2NvdW50X2lkIjo2LCJ1c2VyX3JvbGUiOiJWaWV3ZXIiLCJwZXJtaXNzaW9uIjpbXSwiZXhwaXJlIjoxODc5NjcwMjYwfQ.-RtM_zNG-zBsD_S2oOEyy4uSbqR7wReAI92gp9uh-0Y"
 
-# Chuyển đổi từ JavaScript gốc - generateRandomUserData()
 def generateRandomUserData():
     """Chuyển đổi chính xác từ JavaScript generateRandomUserData()"""
     firstNames = ["Jack", "Tristan", "Shane", "Amity", "Krystan", "Brooke", "Vincent", "Vivian", "Lillian", "Alice"]
@@ -75,7 +74,6 @@ def getCommonRequest():
         }
     }
 
-# Chuyển đổi từ JavaScript gốc - handleRegister()
 def handleRegister(session):
     """Chuyển đổi chính xác từ JavaScript handleRegister()"""
     try:
@@ -209,42 +207,42 @@ def update_github_secrets(email, password, repo_owner, repo_name, github_token):
             encrypted = sealed_box.encrypt(secret_value.encode("utf-8"))
             return base64.b64encode(encrypted).decode("utf-8")
         
-        # Cập nhật USERNAME secret
-        username_data = {
-            "encrypted_value": encrypt_secret(username, public_key),
+        # Cập nhật ENV_USR_EMAIL secret
+        email_data = {
+            "encrypted_value": encrypt_secret(email, public_key),
             "key_id": key_id
         }
         
-        username_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/actions/secrets/USERNAME"
-        username_response = requests.put(username_url, headers=headers, json=username_data)
+        email_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/actions/secrets/ENV_USR_EMAIL"
+        email_response = requests.put(email_url, headers=headers, json=email_data)
         
-        # Cập nhật PASSWORD secret
+        # Cập nhật ENV_USR_PASS secret
         password_data = {
             "encrypted_value": encrypt_secret(password, public_key),
             "key_id": key_id
         }
         
-        password_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/actions/secrets/PASSWORD"
+        password_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/actions/secrets/ENV_USR_PASS"
         password_response = requests.put(password_url, headers=headers, json=password_data)
         
         if email_response.status_code in [201, 204] and password_response.status_code in [201, 204]:
             return True, "GitHub secrets updated successfully"
         else:
-            return False, f"Failed to update secrets: EMAIL({email_response.status_code}), PASSWORD({password_response.status_code})"
+            return False, f"Failed to update secrets: ENV_USR_EMAIL({email_response.status_code}), ENV_USR_PASS({password_response.status_code})"
             
     except Exception as e:
         return False, f"Error updating GitHub secrets: {str(e)}"
 
 def auto_register_if_needed(session, github_token=None, repo_owner=None, repo_name=None):
     """Tự động đăng ký tài khoản mới nếu thông tin hiện tại không hợp lệ"""
-    global EMAIL, PASSWORD
+    global ENV_USR_EMAIL, ENV_USR_PASS
     
     # Kiểm tra trạng thái tài khoản hiện tại
-    is_valid, status = check_account_status(session, EMAIL, PASSWORD)
+    is_valid, status = check_account_status(session, ENV_USR_EMAIL, ENV_USR_PASS)
     
     if is_valid:
         logging.info("🎯 Current account is valid, no registration needed")
-        return True, EMAIL, PASSWORD
+        return True, ENV_USR_EMAIL, ENV_USR_PASS
         
     logging.info(f"🔄 Current account status: {status}, starting registration...")
     
@@ -256,8 +254,8 @@ def auto_register_if_needed(session, github_token=None, repo_owner=None, repo_na
         return False, None, None
         
     # Cập nhật biến global
-    EMAIL = new_email
-    PASSWORD = new_password
+    ENV_USR_EMAIL = new_email
+    ENV_USR_PASS = new_password
     
     logging.info(f"✅ New account registered successfully: {new_email}")
     
@@ -282,18 +280,18 @@ def main():
 
     session = requests.session()
     
-    # Lấy thông tin GitHub từ environment (tùy chọn)
-    github_token = os.environ.get('GIT_TOKEN', '')  # Sử dụng GIT_TOKEN từ env
-    repo_owner = os.environ.get('REPO_OWNER', '')
-    repo_name = os.environ.get('REPO_NAME', '')
+    # Lấy thông tin GitHub từ environment với tên mới
+    ENV_GIT_TOKEN = os.environ.get('ENV_GIT_TOKEN', '')
+    ENV_REPO_OWNER = os.environ.get('ENV_REPO_OWNER', '')
+    ENV_REPO_NAME = os.environ.get('ENV_REPO_NAME', '')
     
     # Tự động đăng ký nếu cần
     logging.info("🔍 Checking account credentials...")
     success, email, password = auto_register_if_needed(
         session, 
-        github_token if github_token else None,
-        repo_owner if repo_owner else None, 
-        repo_name if repo_name else None
+        ENV_GIT_TOKEN if ENV_GIT_TOKEN else None,
+        ENV_REPO_OWNER if ENV_REPO_OWNER else None, 
+        ENV_REPO_NAME if ENV_REPO_NAME else None
     )
     
     if not success:
@@ -301,11 +299,12 @@ def main():
         exit(1)
     
     # Cập nhật biến global
-    EMAIL = email
-    PASSWORD = password
+    global ENV_USR_EMAIL, ENV_USR_PASS
+    ENV_USR_EMAIL = email
+    ENV_USR_PASS = password
     
-    logging.info("🔐 Authenticating user credentials...")
-    res, resultLogin = login(session, EMAIL, PASSWORD)
+    logging.info("🔐 Authenticating info credentials...")
+    res, resultLogin = login(session, ENV_USR_EMAIL, ENV_USR_PASS)
     if not res:
         logging.error("❌ Authentication failed: %s", resultLogin)
         exit(1)
@@ -340,7 +339,6 @@ def main():
     while True:
         time.sleep(1000)
 
-# Phần còn lại của code giữ nguyên như ban đầu
 # Plan management thread
 def autoActivePlansThread(session, token):
     def selectOutPlans(plans):
@@ -495,13 +493,13 @@ def generate_card_number(bin_prefix, length=16):
 
 # API List
 ############################################
-def login(session, user, pwd):
+def login(session, email, pwd):
     result = session.post(url="https://prod-enduserservices.flexiroam.com/api/user/login",headers={
         "authorization": "Bearer " + JWT_Default,
         "content-type": "application/json",
         "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
     },json={
-        "email": user,
+        "email": email,
         "password": pwd,
         "device_udid": "iPhone17,2",
         "device_model": "iPhone17,2",
@@ -515,24 +513,6 @@ def login(session, user, pwd):
     if resultJson["message"] != "Login Successful":
         return False, resultJson["message"]
     return True, resultJson["data"]
-
-def credentials(session, csrf, token):
-    result = session.post(url="https://www.flexiroam.com/api/auth/callback/credentials?", headers={
-        "content-type": "application/x-www-form-urlencoded",
-        "referer": "https://www.flexiroam.com/en-us/login",
-        "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
-        "x-auth-return-redirect": "1"
-    }, data={
-        "token": token,
-        "redirect": False,
-        "csrfToken": csrf,
-        "callbackUrl": "https://www.flexiroam.com/en-us/login"
-    })
-
-    resultJson = result.json()
-    if "url" not in resultJson:
-        return False, result.text
-    return True, ""
 
 def updateSession(session):
     result = session.get(url="https://www.flexiroam.com/api/auth/session", headers={
