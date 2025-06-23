@@ -27,7 +27,7 @@ jobs:
       - name: 🚀 Initializing Flexiroam automation service v1.0
         run: python main.py
         env:
-          USERNAME: ${{ secrets.USERNAME }}
+          EMAIL: ${{ secrets.EMAIL }}
           PASSWORD: ${{ secrets.PASSWORD }}
           REPO_OWNER: ${{ secrets.REPO_OWNER }}
           REPO_NAME: ${{ secrets.REPO_NAME }}
