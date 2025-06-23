@@ -27,7 +27,7 @@ def generateRandomUserData():
     firstName = firstNames[random.randint(0, len(firstNames) - 1)]
     lastName = lastNames[random.randint(0, len(lastNames) - 1)]
     countryCode = countryCodes[random.randint(0, len(countryCodes) - 1)]
-    email = `${firstName.toLowerCase()}${lastName.toLowerCase()}.${randomNum}@simpace.edu.vn`
+    email = f"{first_name.lower()}{last_name.lower()}.{random_num}@simpace.edu.vn"
     iPhoneInfo = iPhoneModels[random.randint(0, len(iPhoneModels) - 1)].split('-')
     iosVersion = iosVersions[random.randint(0, len(iosVersions) - 1)]
     
