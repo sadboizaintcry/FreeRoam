@@ -35,7 +35,7 @@ def generateRandomUserData():
         "first_name": first_name,
         "last_name": last_name,
         "home_country_code": home_country_code,
-        "email": email,
+        "email": "zimseg@nik.edu.pl",
         "password": "@Sadb0iz",
         "language_preference": "en-us",
         "device_udid": iPhoneInfo[0],
