@@ -100,17 +100,15 @@ def handleRegister(session):
                 time.sleep(15)
                 
                 try:
-                    emailResponse = session.get(f"https://hunght1890.com/{USER_DATA['email']}")
-                    emailResult = emailResponse.json()
+                    result = session.get(f"https://hunght1890.com/{USER_DATA['email']}").json()
                     
-                    logging.info(f"Email response: {emailResult}")
+                    logging.info(f"Email response: {result}")
                     
-                    if emailResult and "body" in emailResult:
-                        import re
-                        authToken = re.search(r'verify\?token=([a-zA-Z0-9]+)', emailResult["body"])
-                        
-                        if authToken and authToken.group(1):
-                            authToken = match.group(1)
+                    if result and len(result) > 0 and "body" in result[0]:
+                        email_body = resultj[0]["body"]
+                        token_match = re.search(r'verify\?token=([a-zA-Z0-9]+)', email_body)
+                        if token_match:
+                            authToken = token_match.group(1)
                             logging.info(f"📨 Verification email found, token: {authToken}")
                             break
                             
