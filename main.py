@@ -81,17 +81,17 @@ def handleRegister(session):
         
         logging.info(f"🔄 Registration FlexiRoam: {json.dumps(USER_DATA)}")
         
-        result = session.post(
-            url="https://prod-enduserservices.flexiroam.com/api/registration/request/create",
-            headers=PAYLOAD["headers"],
-            json=USER_DATA,
-            timeout=30
-        )
+        #result = session.post(
+            #url="https://prod-enduserservices.flexiroam.com/api/registration/request/create",
+            #headers=PAYLOAD["headers"],
+            #json=USER_DATA,
+            #timeout=30
+        #)
         
-        registrationResponse = result.json()
+        #registrationResponse = result.json()
         
-        if registrationResponse["message"] == "An email has been sent with verification link, please check your email inbox to verify your account.":
-            logging.info(f"{registrationResponse['message']} -> {USER_DATA['email']}")
+        #if registrationResponse["message"] == "An email has been sent with verification link, please check your email inbox to verify your account.":
+            #logging.info(f"{registrationResponse['message']} -> {USER_DATA['email']}")
             
             authToken = None
             
@@ -100,9 +100,10 @@ def handleRegister(session):
                 time.sleep(15)
                 
                 try:
-                    result = session.get(f"https://hunght1890.com/{USER_DATA['email']}").json()
-                    
-                    logging.info(f"Email response: {result}")
+                    emailResponse = session.get("http://hunght1890.com/tristankennedy.663@simpace.edu.vn")
+            result = emailResponse.json()
+            
+            logging.info(f"Email response: {result}")
                     
                     if result and len(result) > 0 and "body" in result[0]:
                         email_body = result[0]["body"]
