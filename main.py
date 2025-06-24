@@ -14,14 +14,13 @@ CARDBIN = "528911"
 JWT_Default = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRfaWQiOjQsImZpcnN0X25hbWUiOiJUcmF2ZWwiLCJsYXN0X25hbWUiOiJBcHAiLCJlbWFpbCI6InRyYXZlbGFwcEBmbGV4aXJvYW0uY29tIiwidHlwZSI6IkNsaWVudCIsImFjY2Vzc190eXBlIjoiQXBwIiwidXNlcl9hY2NvdW50X2lkIjo2LCJ1c2VyX3JvbGUiOiJWaWV3ZXIiLCJwZXJtaXNzaW9uIjpbXSwiZXhwaXJlIjoxODc5NjcwMjYwfQ.-RtM_zNG-zBsD_S2oOEyy4uSbqR7wReAI92gp9uh-0Y"
 
 def generateRandomUserData():
-    """Chuyển đổi chính xác từ JavaScript generateRandomUserData()"""
+    """Generate random Data for requests"""
     firstNames = ["Jack", "Tristan", "Shane", "Amity", "Krystan", "Brooke", "Vincent", "Vivian", "Lillian", "Alice"]
     lastNames = ["Erickson", "Gilbert", "Maddox", "Morton", "Lindsey", "Chandler", "Johnson", "Travis", "Kennedy"]
     countryCodes = ["US", "UK", "VN", "CA", "AU", "DE", "FR", "JP", "CN", "IN", "BR", "RU", "IT", "ES", "KR", "MX", "ID", "TH", "SG", "MY"]
     iPhoneModels = ["iPhone11,2-iPhone XS", "iPhone12,1-iPhone 11", "iPhone13,2-iPhone 12", "iPhone14,2-iPhone 13 Pro", "iPhone15,2-iPhone 14 Pro", "iPhone16,1-iPhone 15 Pro"]
     iosVersions = ["17.0", "17.1", "17.2", "17.3", "17.4", "17.5", "18.0", "18.1"]
     
-    # Sử dụng chính xác logic từ JavaScript gốc
     randomNum = random.randint(100, 999) + int(str(int(time.time()))[-3:])
     first_name = firstNames[random.randint(0, len(firstNames) - 1)]
     last_name = lastNames[random.randint(0, len(lastNames) - 1)]
@@ -34,7 +33,7 @@ def generateRandomUserData():
         "first_name": first_name,
         "last_name": last_name,
         "home_country_code": home_country_code,
-        "email": "zimseg@nik.edu.pl",
+        "email": email,
         "password": "@Sadb0iz",
         "language_preference": "en-us",
         "device_udid": iPhoneInfo[0],
@@ -46,7 +45,7 @@ def generateRandomUserData():
     }
 
 def getRandomUserAgent():
-    """Chuyển đổi từ JavaScript getRandomUserAgent()"""
+    """Random User-Agent for requests"""
     userAgents = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36",
@@ -55,7 +54,7 @@ def getRandomUserAgent():
     return userAgents[random.randint(0, len(userAgents) - 1)]
 
 def getCommonRequest():
-    """Chuyển đổi từ JavaScript getCommonRequest()"""
+    """Header for requests"""
     return {
         "method": "POST",
         "headers": {
@@ -75,14 +74,13 @@ def getCommonRequest():
     }
 
 def handleRegister(session):
-    """Chuyển đổi chính xác từ JavaScript handleRegister()"""
+    """Registration FlexiRoam account"""
     try:
         USER_DATA = generateRandomUserData()
         PAYLOAD = getCommonRequest()
         
-        logging.info(f"🔄 Initializing UserData: {json.dumps(USER_DATA)}")
+        logging.info(f"🔄 Registration FlexiRoam: {json.dumps(USER_DATA)}")
         
-        # Gửi yêu cầu đăng ký - URL chính xác từ JavaScript gốc
         result = session.post(
             url="https://prod-enduserservices.flexiroam.com/api/registration/request/create",
             headers=PAYLOAD["headers"],
@@ -97,25 +95,21 @@ def handleRegister(session):
             
             authToken = None
             
-            # Thử 3 lần để lấy email verification - logic từ JavaScript gốc
             for attempt in range(1, 4):
                 logging.info(f"🔍 Looking for verification email... (Attempt {attempt}/3)")
-                time.sleep(15)  # Chờ 15 giây như trong JavaScript gốc
+                time.sleep(15)
                 
                 try:
-                    # Sử dụng chính xác URL email service từ JavaScript gốc
                     emailResponse = session.get(f"https://hunght1890.com/{USER_DATA['email']}")
                     emailResult = emailResponse.json()
                     
                     logging.info(f"Email response: {emailResult}")
                     
                     if emailResult and "body" in emailResult:
-                        # Sử dụng chính xác regex từ JavaScript gốc
                         import re
-                        regex = r"verify\?token=([a-zA-Z0-9]+)"
-                        match = re.search(regex, emailResult["body"])
+                        authToken = re.search(r'verify\?token=([a-zA-Z0-9]+)', emailResult["body"])
                         
-                        if match and match.group(1):
+                        if authToken and authToken.group(1):
                             authToken = match.group(1)
                             logging.info(f"📨 Verification email found, token: {authToken}")
                             break
@@ -127,7 +121,6 @@ def handleRegister(session):
                 logging.error("No verification email found. Email verification timeout")
                 return False, "Email verification timeout", None, None
             
-            # Xác thực email - URL chính xác từ JavaScript gốc
             verificationResult = session.post(
                 url="https://prod-enduserservices.flexiroam.com/api/registration/token/verify",
                 headers=PAYLOAD["headers"],
@@ -158,13 +151,11 @@ def check_account_status(session, email, password):
         return False, "No credentials"
         
     try:
-        # Thử đăng nhập với thông tin hiện tại
         res, result = login(session, email, password)
         if res:
             logging.info("✅ Current credentials are valid")
             return True, "Valid credentials"
         else:
-            # Kiểm tra nếu tài khoản bị cấm
             if "Authorization Failed" in str(result) or "banned" in str(result).lower():
                 logging.warning("🚫 Account appears to be banned")
                 return False, "Account banned"
@@ -275,7 +266,7 @@ def auto_register_if_needed(session, github_token=None, repo_owner=None, repo_na
     return True, new_email, new_password
 
 def main():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d [%(levelname)s]  %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logging.info("🔄 Initializing Flexiroam automation service v2.0")
 
     session = requests.session()
@@ -493,6 +484,24 @@ def generate_card_number(bin_prefix, length=16):
 
 # API List
 ############################################
+def register(session):
+    
+    USER_DATA = generateRandomUserData()
+    PAYLOAD = getCommonRequest()
+        
+    logging.info(f"🔄 Registration FlexiRoam: {json.dumps(USER_DATA)}")
+        
+    result = session.post(
+            url="https://prod-enduserservices.flexiroam.com/api/registration/request/create",
+            headers=PAYLOAD["headers"],
+            json=USER_DATA,
+            timeout=30
+        )
+    resultJson = result.json()
+    if resultJson["message"] != "Login Successful":
+        return False, resultJson["message"]
+    return True, resultJson["data"]
+
 def login(session, email, pwd):
     result = session.post(url="https://prod-enduserservices.flexiroam.com/api/user/login",headers={
         "authorization": "Bearer " + JWT_Default,
