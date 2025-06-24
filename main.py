@@ -264,7 +264,7 @@ def auto_register_if_needed(session, github_token=None, repo_owner=None, repo_na
     return True, new_email, new_password
 
 def main():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d [%(levelname)s]  %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logging.info("🔄 Initializing Flexiroam automation service v2.0")
 
     session = requests.session()
