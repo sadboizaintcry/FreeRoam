@@ -105,7 +105,7 @@ def handleRegister(session):
                     logging.info(f"Email response: {result}")
                     
                     if result and len(result) > 0 and "body" in result[0]:
-                        email_body = resultj[0]["body"]
+                        email_body = result[0]["body"]
                         token_match = re.search(r'verify\?token=([a-zA-Z0-9]+)', email_body)
                         if token_match:
                             authToken = token_match.group(1)
