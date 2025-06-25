@@ -136,8 +136,8 @@ def handleRegister(session):
                 logging.info(f"Sign up successful! Account ready: {USER_DATA['email']}")
                 return True, "Registration successful", USER_DATA["email"], USER_DATA["password"]
             else:
-                logging.error("Email verification failed")
-                return False, "Email verification failed", None, None
+                logging.error(f"Email verification failed {verificationResponse}")
+                return False, f"Email verification failed {verificationResponse}", None, None
         else:
             logging.error(f"Registration failed: {registrationResponse['message']}")
             return False, registrationResponse["message"], None, None
