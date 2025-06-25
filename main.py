@@ -137,8 +137,10 @@ def handleRegister(session):
                 logging.error("Email verification failed")
                 return False, "Email verification failed", None, None
         else:
-            logging.error(f"Registration failed: {registrationResponse['message']}")
-            return False, registrationResponse["message"], None, None
+            logging.error(f"Registration failed")
+            return False, "Registration failed", None, None
+            #logging.error(f"Registration failed: {registrationResponse['message']}")
+            #return False, registrationResponse["message"], None, None
             
     except Exception as error:
         logging.error(f"Execution error: {str(error)}")
