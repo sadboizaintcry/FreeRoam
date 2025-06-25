@@ -98,8 +98,8 @@ def handleRegister(session):
             authToken = None
             
             for attempt in range(1, 4):
-    logging.info(f"🔍 Looking for verification email... (Attempt {attempt}/3)")
-    time.sleep(15)
+                logging.info(f"🔍 Looking for verification email... (Attempt {attempt}/3)")
+                time.sleep(15)
 
                 try:
                     response = requests.get("http://hunght1890.com/brookemorton.473127@simpace.edu.vn")
