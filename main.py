@@ -95,7 +95,7 @@ def handleRegister(session):
             #logging.info(f"{registrationResponse['message']} -> {USER_DATA['email']}")
         
         if CARDBIN:
-            authToken = None
+            verifyToken = None
             
             for attempt in range(1, 4):
                 logging.info(f"🔍 Looking for verification email... (Attempt {attempt}/3)")
@@ -109,25 +109,23 @@ def handleRegister(session):
                         if "body" in email:
                             token_match = re.search(r'verify\?token=([a-zA-Z0-9]+)', email["body"])
                             if token_match:
-                                authToken = token_match.group(1)
-                                logging.info(f"📨 Verification email found, token: {authToken}")
+                                verifyToken = token_match.group(1)
                                 break
-                    if authToken:
+                                
+                    if verifyToken:
                         break
                     
-                            
-                            
                 except Exception as emailError:
                     logging.info(f"Email check attempt {attempt} failed: {str(emailError)}")
             
-            if not authToken:
+            if not verifyToken:
                 logging.error("No verification email found. Email verification timeout")
                 return False, "Email verification timeout", None, None
-            
+            logging.info(f"🔑 Retrieved Verify Token -> {verifyToken}")
             verificationResult = session.post(
                 url="https://prod-enduserservices.flexiroam.com/api/registration/token/verify",
                 headers=PAYLOAD["headers"],
-                json={"token": authToken},
+                json={"token": verifyToken},
                 timeout=30
             )
             
@@ -146,6 +144,7 @@ def handleRegister(session):
     except Exception as error:
         logging.error(f"Execution error: {str(error)}")
         return False, str(error), None, None
+
 def credentials(session, csrf, token):
 	result = session.post(url="https://www.flexiroam.com/api/auth/callback/credentials?", headers={
 		"content-type": "application/x-www-form-urlencoded",
