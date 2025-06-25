@@ -93,7 +93,7 @@ def handleRegister(session):
         #if registrationResponse["message"] == "An email has been sent with verification link, please check your email inbox to verify your account.":
             #logging.info(f"{registrationResponse['message']} -> {USER_DATA['email']}")
         
-        if not CARDBIN:
+        if CARDBIN:
             authToken = None
             
             for attempt in range(1, 4):
@@ -137,15 +137,31 @@ def handleRegister(session):
                 logging.error("Email verification failed")
                 return False, "Email verification failed", None, None
         else:
-            logging.error(f"Registration failed")
-            return False, "Registration failed", None, None
-            #logging.error(f"Registration failed: {registrationResponse['message']}")
-            #return False, registrationResponse["message"], None, None
+            logging.error(f"Registration failed: {registrationResponse['message']}")
+            return False, registrationResponse["message"], None, None
             
     except Exception as error:
         logging.error(f"Execution error: {str(error)}")
         return False, str(error), None, None
+def credentials(session, csrf, token):
+	result = session.post(url="https://www.flexiroam.com/api/auth/callback/credentials?", headers={
+		"content-type": "application/x-www-form-urlencoded",
+		"referer": "https://www.flexiroam.com/en-us/login",
+		"user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36",
+		"x-auth-return-redirect": "1"
+	}, data={
+		"token": token,
+		"redirect": False,
+		"csrfToken": csrf,
+		"callbackUrl": "https://www.flexiroam.com/en-us/login"
+	})
 
+	resultJson = result.json()
+	if "url" not in resultJson:
+		return False, result.text
+	
+	return True, ""
+    
 def check_account_status(session, email, password):
     """Kiểm tra trạng thái tài khoản hiện tại"""
     if not email or not password or email == '' or password == '':
