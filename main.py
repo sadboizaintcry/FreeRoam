@@ -122,6 +122,7 @@ def handleRegister(session):
                 logging.error("No verification email found. Email verification timeout")
                 return False, "Email verification timeout", None, None
             logging.info(f"🔑 Retrieved Verify Token -> {verifyToken}")
+            
             verificationResult = session.post(
                 url="https://prod-enduserservices.flexiroam.com/api/registration/token/verify",
                 headers=PAYLOAD["headers"],
@@ -130,7 +131,7 @@ def handleRegister(session):
             )
             
             verificationResponse = verificationResult.json()
-            
+            logging.info(verificationResponse)
             if verificationResponse["message"] == "Email verification successfully. Please proceed to login":
                 logging.info(f"Sign up successful! Account ready: {USER_DATA['email']}")
                 return True, "Registration successful", USER_DATA["email"], USER_DATA["password"]
