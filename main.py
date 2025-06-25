@@ -102,9 +102,9 @@ def handleRegister(session):
                 
                 try:
                     emailResponse = session.get("http://hunght1890.com/tristankennedy.663@simpace.edu.vn")
-            result = emailResponse.json()
+                    result = emailResponse.json()
             
-            logging.info(f"Email response: {result}")
+                    logging.info(f"Email response: {result}")
                     
                     if result and len(result) > 0 and "body" in result[0]:
                         email_body = result[0]["body"]
