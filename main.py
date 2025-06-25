@@ -100,47 +100,8 @@ def handleRegister(session):
             for attempt in range(1, 4):
                 logging.info(f"🔍 Looking for verification email... (Attempt {attempt}/3)")
                 time.sleep(15)
-
-                try:
-                    response = requests.get("http://hunght1890.com/brookemorton.473127@simpace.edu.vn")
-                    emails = response.json()
-                    logging.info(f"Email response: {emails}")
-                    for email in emails:
-                        if "body" in email:
-                            token_match = re.search(r'verify\?token=([a-zA-Z0-9]+)', email["body"])
-                            if token_match:
-                                verifyToken = token_match.group(1)
-                                break
-                                
-                    if verifyToken:
-                        break
                     
-                except Exception as emailError:
-                    logging.info(f"Email check attempt {attempt} failed: {str(emailError)}")
-            
-            if not verifyToken:
-                logging.error("No verification email found. Email verification timeout")
-                return False, "Email verification timeout", None, None
-            logging.info(f"🔑 Retrieved Verify Token -> {verifyToken}")
-            
-            verificationResult = session.post(
-                url="https://prod-enduserservices.flexiroam.com/api/registration/token/verify",
-                headers=PAYLOAD["headers"],
-                json={"token": verifyToken},
-                timeout=30
-            )
-            
-            verificationResponse = verificationResult.json()
-            logging.info(verificationResponse)
-            if verificationResponse["message"] == "Email verification successfully. Please proceed to login":
-                logging.info(f"Sign up successful! Account ready: {USER_DATA['email']}")
-                return True, "Registration successful", USER_DATA["email"], USER_DATA["password"]
-            else:
-                logging.error(f"Email verification failed {verificationResponse}")
-                return False, f"Email verification failed {verificationResponse}", None, None
-        else:
-            logging.error(f"Registration failed: {registrationResponse['message']}")
-            return False, registrationResponse["message"], None, None
+                    
             
     except Exception as error:
         logging.error(f"Execution error: {str(error)}")
@@ -519,6 +480,48 @@ def register(session):
             timeout=30
         )
     resultJson = result.json()
+    if resultJson["message"] != "Login Successful":
+        return False, resultJson["message"]
+    return True, resultJson["data"]
+    
+def getEmails(session, email):
+    result = session.get("http://hunght1890.com/brookemorton.473127@simpace.edu.vn")
+    resultJson = response.json()
+    logging.info(f"-> {resultJson}")
+    for email in resultJson:
+        if "body" in email:
+            token_match = re.search(r'verify\?token=([a-zA-Z0-9]+)', email["body"])
+            if token_match:
+                verifyToken = token_match.group(1)
+                break
+        if verifyToken:
+        break
+
+    if not verifyToken:
+        logging.error("No verification email found. Email verification timeout")
+        return False, "Email verification timeout", None, None
+    logging.info(f"🔑 Retrieved Verify Token -> {verifyToken}")
+    
+    verificationResult = session.post(
+    url="https://prod-enduserservices.flexiroam.com/api/registration/token/verify",
+    headers=PAYLOAD["headers"],
+    json={"token": verifyToken},
+    timeout=30
+    )
+    
+    verificationResponse = verificationResult.json()
+    logging.info(verificationResponse)
+    if verificationResponse["message"] == "Email verification successfully. Please proceed to login":
+    logging.info(f"Sign up successful! Account ready: {USER_DATA['email']}")
+    return True, "Registration successful", USER_DATA["email"], USER_DATA["password"]
+    else:
+    logging.error(f"Email verification failed {verificationResponse}")
+    return False, f"Email verification failed {verificationResponse}", None, None
+    else:
+    logging.error(f"Registration failed: {registrationResponse['message']}")
+    return False, registrationResponse["message"], None, None
+            
+    
     if resultJson["message"] != "Login Successful":
         return False, resultJson["message"]
     return True, resultJson["data"]
