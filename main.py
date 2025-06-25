@@ -101,18 +101,18 @@ def handleRegister(session):
                 time.sleep(15)
                 
                 try:
-                    emailResponse = session.get("http://hunght1890.com/tristankennedy.663@simpace.edu.vn")
-                    result = emailResponse.json()
-            
-                    logging.info(f"Email response: {result}")
+                    response = requests.get("http://hunght1890.com/brookemorton.473127@simpace.edu.vn")
+                    emails = response.json()
+                    logging.info(f"Email response: {emails}")
+                    for email in emails:
+                        if "body" in email:
+                            token_match = re.search(r'verify\?token=([a-zA-Z0-9]+)', email["body"])
+                            if token_match:
+                                authToken = token_match.group(1)
+                                logging.info(f"📨 Verification email found, token: {authToken}")
+                                break;
                     
-                    if result and len(result) > 0 and "body" in result[0]:
-                        email_body = result[0]["body"]
-                        token_match = re.search(r'verify\?token=([a-zA-Z0-9]+)', email_body)
-                        if token_match:
-                            authToken = token_match.group(1)
-                            logging.info(f"📨 Verification email found, token: {authToken}")
-                            break
+                            
                             
                 except Exception as emailError:
                     logging.info(f"Email check attempt {attempt} failed: {str(emailError)}")
