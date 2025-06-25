@@ -93,7 +93,7 @@ def handleRegister(session):
         #if registrationResponse["message"] == "An email has been sent with verification link, please check your email inbox to verify your account.":
             #logging.info(f"{registrationResponse['message']} -> {USER_DATA['email']}")
         registrationResponse = true
-        if(registrationResponse)
+        if registrationResponse:
             authToken = None
             
             for attempt in range(1, 4):
