@@ -8,10 +8,15 @@ import os
 import base64
 import re
 from datetime import datetime, timedelta
+from nacl import encoding, public
 
-ENV_USR_EMAIL = os.environ.get('ENV_USR_EMAIL', '')
-ENV_USR_PASS = os.environ.get('ENV_USR_PASS', '')
-CARDBIN = "528911"
+usr_email=os.environ.get('usr_email', '')
+usr_pass=os.environ.get('usr_pass', '')
+usr_auth_token=os.environ.get('usr_auth_token', '')
+repo_token=os.environ.get('repo_token', '')
+repo_owner=os.environ.get('repo_owner', '')
+repo_name=os.environ.get('repo_name', '')
+CARD_BIN = "528911"
 JWT_Default = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJjbGllbnRfaWQiOjQsImZpcnN0X25hbWUiOiJUcmF2ZWwiLCJsYXN0X25hbWUiOiJBcHAiLCJlbWFpbCI6InRyYXZlbGFwcEBmbGV4aXJvYW0uY29tIiwidHlwZSI6IkNsaWVudCIsImFjY2Vzc190eXBlIjoiQXBwIiwidXNlcl9hY2NvdW50X2lkIjo2LCJ1c2VyX3JvbGUiOiJWaWV3ZXIiLCJwZXJtaXNzaW9uIjpbXSwiZXhwaXJlIjoxODc5NjcwMjYwfQ.-RtM_zNG-zBsD_S2oOEyy4uSbqR7wReAI92gp9uh-0Y"
 
 def generateRandomUserData():
@@ -74,39 +79,6 @@ def getCommonRequest():
         }
     }
 
-def handleRegister(session):
-    """Registration FlexiRoam account"""
-    try:
-        USER_DATA = generateRandomUserData()
-        PAYLOAD = getCommonRequest()
-        
-        logging.info(f"🔄 Registration FlexiRoam: {json.dumps(USER_DATA)}")
-        
-        #result = session.post(
-            #url="https://prod-enduserservices.flexiroam.com/api/registration/request/create",
-            #headers=PAYLOAD["headers"],
-            #json=USER_DATA,
-            #timeout=30
-        #)
-        
-        #registrationResponse = result.json()
-        
-        #if registrationResponse["message"] == "An email has been sent with verification link, please check your email inbox to verify your account.":
-            #logging.info(f"{registrationResponse['message']} -> {USER_DATA['email']}")
-        
-        if CARDBIN:
-            verifyToken = None
-            
-            for attempt in range(1, 4):
-                logging.info(f"🔍 Looking for verification email... (Attempt {attempt}/3)")
-                time.sleep(15)
-                    
-                    
-            
-    except Exception as error:
-        logging.error(f"Execution error: {str(error)}")
-        return False, str(error), None, None
-
 def credentials(session, csrf, token):
 	result = session.post(url="https://www.flexiroam.com/api/auth/callback/credentials?", headers={
 		"content-type": "application/x-www-form-urlencoded",
@@ -149,86 +121,70 @@ def check_account_status(session, email, password):
         logging.error(f"❌ Error checking account status: {str(e)}")
         return False, f"Error: {str(e)}"
 
-def update_github_secrets(email, password, repo_owner, repo_name, github_token):
+def update_github_secrets(session, secret_name, secret_value):
     """Cập nhật GitHub repository secrets với thông tin đăng nhập mới"""
+    global repo_owner, repo_name, repo_token
     try:
-        # Kiểm tra xem PyNaCl có sẵn không
-        try:
-            from nacl import encoding, public
-        except ImportError:
-            logging.warning("⚠️ PyNaCl not available, skipping GitHub secrets update")
-            return False, "PyNaCl library not installed"
         
-        # Lấy public key để mã hóa
-        public_key_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/actions/secrets/public-key"
+        GITHUB_BASE_URL = f"https://api.github.com/repos/{repo_owner}/{repo_name}/actions/secrets"
         headers = {
-            "Authorization": f"token {github_token}",
-            "Accept": "application/vnd.github.v3+json"
+            "Authorization": f"Bearer {repo_token}",
+            "Accept": "application/vnd.github+json"
         }
         
-        response = requests.get(public_key_url, headers=headers)
-        if response.status_code != 200:
-            return False, f"Failed to get public key: {response.text}"
-            
-        public_key_data = response.json()
-        public_key = public_key_data["key"]
-        key_id = public_key_data["key_id"]
+        response = session.get(f"{GITHUB_BASE_URL}/public-key", headers=headers).json()
+        
+        response.raise_for_status()
+        public_key = response["key"]
+        key_id = response["key_id"]
         
         # Mã hóa secrets
-        def encrypt_secret(secret_value, public_key):
-            sealed_box = public.SealedBox(public.PublicKey(public_key.encode("utf-8"), encoding.Base64Encoder()))
+        def encrypt(public_key: str, secret_value: str) -> str:
+            public_key = nacl.public.PublicKey(public_key.encode("utf-8"), nacl.encoding.Base64Encoder())
+            sealed_box = nacl.public.SealedBox(public_key)
             encrypted = sealed_box.encrypt(secret_value.encode("utf-8"))
             return base64.b64encode(encrypted).decode("utf-8")
-        
-        # Cập nhật ENV_USR_EMAIL secret
-        email_data = {
-            "encrypted_value": encrypt_secret(email, public_key),
+            
+            
+        url_secret = f"{GITHUB_BASE_URL}/{secret_name}"
+        data = {
+            "encrypted_value": encrypt(public_key, secret_value),
             "key_id": key_id
         }
+        response = session.put(url_secret, headers=headers, json=data)
+        response.raise_for_status()
         
-        email_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/actions/secrets/ENV_USR_EMAIL"
-        email_response = requests.put(email_url, headers=headers, json=email_data)
-        
-        # Cập nhật ENV_USR_PASS secret
-        password_data = {
-            "encrypted_value": encrypt_secret(password, public_key),
-            "key_id": key_id
-        }
-        
-        password_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/actions/secrets/ENV_USR_PASS"
-        password_response = requests.put(password_url, headers=headers, json=password_data)
-        
-        if email_response.status_code in [201, 204] and password_response.status_code in [201, 204]:
+        if response.status_code in [201, 204]:
             return True, "GitHub secrets updated successfully"
         else:
-            return False, f"Failed to update secrets: ENV_USR_EMAIL({email_response.status_code}), ENV_USR_PASS({password_response.status_code})"
-            
+            return False, f"Failed to update secrets: {secret_name}({response.status_code})"
     except Exception as e:
         return False, f"Error updating GitHub secrets: {str(e)}"
 
 def auto_register_if_needed(session, github_token=None, repo_owner=None, repo_name=None):
     """Tự động đăng ký tài khoản mới nếu thông tin hiện tại không hợp lệ"""
-    global ENV_USR_EMAIL, ENV_USR_PASS
+    global usr_email, usr_pass
     
     # Kiểm tra trạng thái tài khoản hiện tại
-    is_valid, status = check_account_status(session, ENV_USR_EMAIL, ENV_USR_PASS)
+    is_valid, status = check_account_status(session, usr_email, usr_pass)
     
     if is_valid:
         logging.info("🎯 Current account is valid, no registration needed")
-        return True, ENV_USR_EMAIL, ENV_USR_PASS
+        return True, usr_email, usr_pass
         
     logging.info(f"🔄 Current account status: {status}, starting registration...")
     
     # Đăng ký tài khoản mới
-    success, message, new_email, new_password = handleRegister(session)
+    success, message = FlexiRoam.register(session)
     
     if not success:
-        logging.error(f"❌ Auto registration failed: {message}")
+        logging.error(message)
         return False, None, None
         
+    success, message = FlexiRoam.get_verification_token(session, USER)
     # Cập nhật biến global
-    ENV_USR_EMAIL = new_email
-    ENV_USR_PASS = new_password
+    usr_email = new_email
+    usr_pass = new_password
     
     logging.info(f"✅ New account registered successfully: {new_email}")
     
@@ -252,61 +208,75 @@ def main():
     logging.info("🔄 Initializing Flexiroam automation service v2.0")
 
     session = requests.session()
+    if not usr_email:
+        logging.warning("No credentials provided, starting registration...")
+        # Đăng ký tài khoản mới
+        success, result = FlexiRoam.register(session)
     
-    # Lấy thông tin GitHub từ environment với tên mới
-    ENV_GIT_TOKEN = os.environ.get('ENV_GIT_TOKEN', '')
-    ENV_REPO_OWNER = os.environ.get('ENV_REPO_OWNER', '')
-    ENV_REPO_NAME = os.environ.get('ENV_REPO_NAME', '')
-    
-    # Tự động đăng ký nếu cần
-    logging.info("🔍 Checking account credentials...")
-    success, email, password = auto_register_if_needed(
-        session, 
-        ENV_GIT_TOKEN if ENV_GIT_TOKEN else None,
-        ENV_REPO_OWNER if ENV_REPO_OWNER else None, 
-        ENV_REPO_NAME if ENV_REPO_NAME else None
-    )
-    
-    if not success:
-        logging.error("❌ Failed to establish valid account credentials")
-        exit(1)
-    
+        if not success:
+            logging.error(result)
+            return False, None, None
+        
+        email = result["email"]
+        success, result = FlexiRoam.get_verification_token(session, email)
+        if not success:
+            logging.error(result)
+            return False, None, None
+            
+        verification_token = result
+        success, message = FlexiRoam.verify(session, verification_token)
+        if not success:
+            logging.error(message)
+            return False, None, None
+            
     # Cập nhật biến global
-    global ENV_USR_EMAIL, ENV_USR_PASS
-    ENV_USR_EMAIL = email
-    ENV_USR_PASS = password
+    usr_email = email
     
-    logging.info("🔐 Authenticating info credentials...")
-    res, resultLogin = login(session, ENV_USR_EMAIL, ENV_USR_PASS)
-    if not res:
-        logging.error("❌ Authentication failed: %s", resultLogin)
-        exit(1)
+    logging.info(f"✅ FlexiRoam account registered successfully: {email}")
+    
+    # Cập nhật GitHub secrets nếu có thông tin
+    if repo_token and repo_owner and repo_name:
+        logging.info("🔄 Updating GitHub repository secrets...")
+        success, result = update_github_secrets()
+        if success:
+            logging.info("✅ GitHub secrets updated successfully")
+        else:
+            logging.warning(f"⚠️ Failed to update GitHub secrets: {github_result}")
+    else:
+        logging.info("ℹ️ GitHub credentials not provided, skipping secrets update")
+        
+    return True, new_email, new_password
+    
+	logging.info("🔐 Authenticating info credentials...")
+	if not usr_auth_token:
+    	success, response = login(session, USERNAME, PASSWORD)
+    	if not success:
+    		logging.error("❌ Authentication failed: %s", response)
+    		exit(1)
 
-    token = resultLogin["token"]
-    logging.info("🔑 Retrieved authToken -> %s", token)
+    	usr_auth_token = response["token"]
+    	logging.info("🔑 Retrieved authToken -> %s", usr_auth_token)
 
-    logging.info("🔐 Retrieving CSRF token...")
-    res, csrf = getCsrf(session)
-    if not res:
-        logging.error("❌ CSRF token retrieval failed: %s", csrf)
-        exit(1)
+	logging.info("🔐 Retrieving CSRF token...")
+	success, response = getCsrf(session)
+	if not success:
+		logging.error("❌ CSRF token retrieval failed: %s", response)
+		exit(1)
+	logging.info("🔑 Retrieved CSRF -> %s", response)
 
-    logging.info("🔑 Retrieved CSRF -> %s", csrf)
-
-    logging.info("🛡️ Establishing secure session...")
-    # Get authentication Cookie
-    res, resultCredentials = credentials(session, csrf, token)
-    if not res:
-        logging.error("❌ Session establishment failed: %s", resultCredentials)
-        exit(1)
-
-    logging.info("📅 Authentication successful - Service ready")
-
+	logging.info("🛡️ Establishing secure session...")
+	# Get authentication Cookie
+	success, response = credentials(session, response, usr_auth_token)
+	if not success:
+		logging.error("❌ Session establishment failed: %s", response)
+		exit(1)
+        
+	logging.info("🚀 Authentication successful - Service ready")
     # Start session update thread
     threading.Thread(target=updateSessionThread, daemon=True, kwargs={ "session": session }).start()
-
     # Start plan management thread
-    threading.Thread(target=autoActivePlansThread, daemon=True, kwargs={ "session": session, "token": token }).start()
+    threading.Thread(
+    target=autoActivePlansThread, daemon=True, kwargs={ "session": session, "token": usr_auth_token }).start()
 
     # Block process
     while True:
@@ -408,7 +378,7 @@ def autoActivePlansThread(session, token):
 
 def eligibilityAddToAccount(session, token):
     # Generate card number
-    cardNumber = generate_card_number(CARDBIN)
+    cardNumber = generate_card_number(CARD_BIN)
 
     # Check if card number meets requirements
     res, resultEligibilityPlan = eligibilityPlan(session, token, cardNumber)
@@ -466,66 +436,6 @@ def generate_card_number(bin_prefix, length=16):
 
 # API List
 ############################################
-def register(session):
-    
-    USER_DATA = generateRandomUserData()
-    PAYLOAD = getCommonRequest()
-        
-    logging.info(f"🔄 Registration FlexiRoam: {json.dumps(USER_DATA)}")
-        
-    result = session.post(
-            url="https://prod-enduserservices.flexiroam.com/api/registration/request/create",
-            headers=PAYLOAD["headers"],
-            json=USER_DATA,
-            timeout=30
-        )
-    resultJson = result.json()
-    if resultJson["message"] != "Login Successful":
-        return False, resultJson["message"]
-    return True, resultJson["data"]
-    
-def getEmails(session, email):
-    result = session.get("http://hunght1890.com/brookemorton.473127@simpace.edu.vn")
-    resultJson = response.json()
-    logging.info(f"-> {resultJson}")
-    for email in resultJson:
-        if "body" in email:
-            token_match = re.search(r'verify\?token=([a-zA-Z0-9]+)', email["body"])
-            if token_match:
-                verifyToken = token_match.group(1)
-                break
-        if verifyToken:
-        break
-
-    if not verifyToken:
-        logging.error("No verification email found. Email verification timeout")
-        return False, "Email verification timeout", None, None
-    logging.info(f"🔑 Retrieved Verify Token -> {verifyToken}")
-    
-    verificationResult = session.post(
-    url="https://prod-enduserservices.flexiroam.com/api/registration/token/verify",
-    headers=PAYLOAD["headers"],
-    json={"token": verifyToken},
-    timeout=30
-    )
-    
-    verificationResponse = verificationResult.json()
-    logging.info(verificationResponse)
-    if verificationResponse["message"] == "Email verification successfully. Please proceed to login":
-    logging.info(f"Sign up successful! Account ready: {USER_DATA['email']}")
-    return True, "Registration successful", USER_DATA["email"], USER_DATA["password"]
-    else:
-    logging.error(f"Email verification failed {verificationResponse}")
-    return False, f"Email verification failed {verificationResponse}", None, None
-    else:
-    logging.error(f"Registration failed: {registrationResponse['message']}")
-    return False, registrationResponse["message"], None, None
-            
-    
-    if resultJson["message"] != "Login Successful":
-        return False, resultJson["message"]
-    return True, resultJson["data"]
-
 def login(session, email, pwd):
     result = session.post(url="https://prod-enduserservices.flexiroam.com/api/user/login",headers={
         "authorization": "Bearer " + JWT_Default,
@@ -609,7 +519,7 @@ def eligibilityPlan(session, token, lookup_value):
         "content-type": "application/json",
         "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Mobile Safari/537.36"
     }, json={
-        "email": ENV_USR_EMAIL,
+        "email": usr_email,
         "lookup_value": lookup_value
     })
 
@@ -635,6 +545,52 @@ def redemptionConfirm(session, token, redemption_id):
     if resultJson["message"] != "Redemption confirmed":
         return False, resultJson["message"]
     return True, "Got new plan successfully!"
+    
+class FlexiRoam:
+    @staticmethod
+    user_data = generateRandomUserData()
+    def register(session):
+        logging.info(f"🔄 -> {json.dumps(user_data)}")
+            
+        response = session.post("https://prod-enduserservices.flexiroam.com/api/registration/request/create",
+            headers=PAYLOAD["headers"],
+            json=user_data,
+            timeout=30
+        ).json()
+        if response["message"] != "An email has been sent with verification link, please check your email inbox to verify your account.":
+            return False, response["message"]
+        return True, response["data"]
+    
+    def get_verification_token(session, email):
+        verification_token = None
+                
+        for attempt in range(1, 4):
+            logging.info(f"🔍 Looking for verification email... (Attempt {attempt}/3)")
+            time.sleep(15)
+            response = session.get(f"http://hunght1890.com/{email}").json()
+            logging.info(f"-> {response}")
+            for group in response:
+                if "body" in group:
+                    token_match = re.search(r'verify\?token=([a-zA-Z0-9]+)', group["body"])
+                    if token_match:
+                        verification_token = token_match.group(1)
+                        break
+                if verification_token:
+                    return True, verification_token
+                    break
+                    
+        if not verification_token:
+            return False, "No verify token found in email!", None, None
 
+    def verify(session, verify_token):
+        response = session.post("https://prod-enduserservices.flexiroam.com/api/registration/token/verify",headers=PAYLOAD["headers"],json={"token": verify_token},timeout=30).json()
+        
+        if response["message"] == "Email verification successfully. Please proceed to login":
+            return True, "Registration successful", USER_DATA["email"]
+        else:
+            return False, f"Email verification failed {response}", None, None
+
+    
+    
 if __name__ == "__main__":
     main()
