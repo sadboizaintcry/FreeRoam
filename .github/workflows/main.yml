@@ -27,8 +27,9 @@ jobs:
       - name: 🚀 Initializing Flexiroam automation service v1.0
         run: python main.py
         env:
-          ENV_USR_EMAIL: ${{secrets.ENV_USR_EMAIL}}
-          ENV_USR_PASS: ${{secrets.ENV_USR_PASS}}
-          ENV_REPO_OWNER: ${{secrets.ENV_REPO_OWNER}}
-          ENV_REPO_NAME: ${{secrets.ENV_REPO_NAME}}
-          ENV_GIT_TOKEN: ${{secrets.ENV_GIT_TOKEN}}
+          usr_email: ${{secrets.usr_email}}
+          usr_pass: ${{secrets.usr_pass}}
+          usr_auth_token: ${{secrets.usr_auth_token}}
+          repo_owner: ${{secrets.repo_owner}}
+          repo_name: ${{secrets.repo_name}}
+          repo_token: ${{secrets.repo_token}}
