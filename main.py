@@ -8,7 +8,6 @@ import os
 import base64
 import re
 from datetime import datetime, timedelta
-import nacl
 from nacl import encoding, public
 
 # Cấu hình logging
